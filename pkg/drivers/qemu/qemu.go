@@ -398,10 +398,15 @@ func (d *Driver) Start() error {
 		startCmd = append(startCmd,
 			"-cdrom", isoPath)
 	}
+
+	// if runtime.GOOS != "windows" {
 	startCmd = append(startCmd,
-		"-qmp", fmt.Sprintf("unix:%s,server,nowait", d.monitorPath()),
+
+		"-qmp", fmt.Sprintf("tcp:%s,server,nowait", d.monitorPath()),
+		// "-qmp", fmt.Sprintf("unix:%s,server,nowait", d.monitorPath()),
 		"-pidfile", d.pidfilePath(),
 	)
+	// }
 
 	switch d.Network {
 	case "user":
@@ -424,8 +429,11 @@ func (d *Driver) Start() error {
 		log.Errorf("unknown network: %s", d.Network)
 	}
 
-	startCmd = append(startCmd,
-		"-daemonize")
+	if runtime.GOOS != "windows" {
+		//Daemonize not available in Windows. Will need to use 'start' command
+		startCmd = append(startCmd,
+			"-daemonize")
+	}
 
 	if d.CloudConfigRoot != "" {
 		startCmd = append(startCmd,
@@ -445,10 +453,21 @@ func (d *Driver) Start() error {
 			d.diskPath())
 	}
 
-	if stdout, stderr, err := cmdOutErr(d.Program, startCmd...); err != nil {
-		fmt.Printf("OUTPUT: %s\n", stdout)
-		fmt.Printf("ERROR: %s\n", stderr)
-		return err
+	if runtime.GOOS == "windows" {
+		//Use the start command
+		var s = append([]string{"/c start"}, d.Program)
+		startCmd = append(s, startCmd...)
+		if stdout, stderr, err := cmdOutErr("cmd", startCmd...); err != nil {
+			fmt.Printf("OUTPUT: %s\n", stdout)
+			fmt.Printf("ERROR: %s\n", stderr)
+			return err
+		}
+	} else {
+		if stdout, stderr, err := cmdOutErr(d.Program, startCmd...); err != nil {
+			fmt.Printf("OUTPUT: %s\n", stdout)
+			fmt.Printf("ERROR: %s\n", stderr)
+			return err
+		}
 	}
 	log.Infof("Waiting for VM to start (ssh -p %d docker@localhost)...", d.SSHPort)
 
@@ -557,8 +576,9 @@ func (d *Driver) diskPath() string {
 }
 
 func (d *Driver) monitorPath() string {
-	machineDir := filepath.Join(d.StorePath, "machines", d.GetMachineName())
-	return filepath.Join(machineDir, "monitor")
+	// machineDir := filepath.Join(d.StorePath, "machines", d.GetMachineName())
+	// return filepath.Join(machineDir, "monitor")
+	return "localhost:4444"
 }
 
 func (d *Driver) pidfilePath() string {
@@ -657,7 +677,8 @@ func (d *Driver) generateUserdataDisk(userdataFile string) (string, error) {
 
 func (d *Driver) RunQMPCommand(command string) (map[string]interface{}, error) {
 	// connect to monitor
-	conn, err := net.Dial("unix", d.monitorPath())
+	conn, err := net.Dial("tcp", d.monitorPath())
+	// conn, err := net.Dial("unix", d.monitorPath())
 	if err != nil {
 		return nil, err
 	}

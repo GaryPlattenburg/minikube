@@ -46,7 +46,7 @@ deploy/iso/minikube-iso/board/minikube/aarch64/rootfs-overlay/etc/CHANGELOG
 
 /.idea
 
-/.vscode
+# /.vscode
 
 test/integration/testdata/minikube-linux-amd64-latest-stable
 
