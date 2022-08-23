@@ -455,9 +455,19 @@ func (d *Driver) Start() error {
 
 	if runtime.GOOS == "windows" {
 		//Use the start command
-		var s = append([]string{"/c start"}, d.Program)
-		startCmd = append(s, startCmd...)
-		if stdout, stderr, err := cmdOutErr("cmd", startCmd...); err != nil {
+		// var s = append([]string{"/c start"}, d.Program)
+		// startCmd = append(s, startCmd...)
+		// if stdout, stderr, err := cmdOutErr("cmd", startCmd...); err != nil {
+		// 	fmt.Printf("OUTPUT: %s\n", stdout)
+		// 	fmt.Printf("ERROR: %s\n", stderr)
+		// 	return err
+		// }
+
+		var s = append([]string{"start-process -WindowStyle Hidden"}, d.Program)
+		var args = strings.Join(startCmd, "\",\"")
+		args = "-ArgumentList \"" + args + "\""
+		startCmd = append(s, args)
+		if stdout, stderr, err := cmdOutErr("powershell", startCmd...); err != nil {
 			fmt.Printf("OUTPUT: %s\n", stdout)
 			fmt.Printf("ERROR: %s\n", stderr)
 			return err
